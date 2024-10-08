@@ -1,101 +1,98 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import SearchBar from './components/searchBar';
+import CreateReceiptForm from './components/createReceiptForm';
+import EditReceiptForm from './components/editReceiptForm';
+import ReceiptTable from './components/receiptTable';
+import Pagination from './components/pagination';
+import LoadingIndicator from './components/loadingIndicator';
+import { Receipt } from './types';
+axios.defaults.baseURL = 'http://localhost:5000'; // Set this at the start of your application
+
+const AdminDashboard: React.FC = () => {
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [editingReceipt, setEditingReceipt] = useState<Receipt | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    const fetchReceipts = async () => {
+      setLoading(true);
+      const response = await axios.get('/receipts', {
+        params: { page: currentPage, limit: itemsPerPage, search: searchQuery },
+      });
+      setReceipts(response.data.receipts);
+      setTotalPages(Math.ceil(response.data.total / itemsPerPage));
+      setLoading(false);
+    };
+
+    fetchReceipts();
+  }, [currentPage, searchQuery]);
+
+  const handleCreateReceipt = async (clientName: string, amount: number) => {
+    const response = await axios.post('/receipts', { clientName, amount });
+    // Add the newly created receipt to the local state
+    setReceipts((prev) => [...prev, response.data.newReceipt]);
+    setCurrentPage(1); // Reset to the first page if needed
+  };
+
+  const handleEditReceipt = (receipt: Receipt) => {
+    setEditingReceipt(receipt);
+  };
+
+  const handleDeleteReceipt = async (id: string) => {
+    await axios.delete(`/receipts/${id}`);
+    setReceipts((prev) => prev.filter((receipt) => receipt._id !== id));
+  };
+
+  const handleTogglePaid = async (id: string) => {
+    await axios.patch(`/receipts/${id}/toggle-paid`);
+    setCurrentPage(1); // Reset to the first page
+  };
+
+  const handleCapturePayment = async (paymentIntentId: string | undefined, receiptId: string) => {
+    await axios.post('/receipts/capture-payment', { paymentIntentId, receiptId });
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+      <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <CreateReceiptForm onSubmit={handleCreateReceipt} />
+      {loading ? (
+        <LoadingIndicator />
+      ) : (
+        <>
+          <ReceiptTable
+            receipts={receipts}
+            onEdit={handleEditReceipt}
+            onDelete={handleDeleteReceipt}
+            onTogglePaid={handleTogglePaid}
+            onCapturePayment={handleCapturePayment}
+          />
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+        </>
+      )}
+      {editingReceipt && (
+        <EditReceiptForm
+          receipt={editingReceipt}
+          onSubmit={(updatedReceipt) => {
+            setReceipts((prev) => prev.map((r) => (r._id === updatedReceipt._id ? updatedReceipt : r)));
+            setEditingReceipt(null);
+          }}
         />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
     </div>
   );
-}
+};
+
+export default AdminDashboard;
