@@ -8,4 +8,8 @@ export interface Receipt {
     paymentIntentId?: string; // Optional, in case of payment intent
     status?: string; // Status for payments, e.g., 'authorized'
   }
-  
+
+ export interface Product {
+  id: string;
+  name: string;
+}

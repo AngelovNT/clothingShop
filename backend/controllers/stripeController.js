@@ -1,6 +1,6 @@
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-const Receipt = require('../models/Receipt'); // Ensure you have your Receipt model imported
+const Receipt = require('../models/receipt'); // Ensure you have your Receipt model imported
 
 const createStripePayment = async (req, res) => {
     const { amount, currency, receiptId } = req.body;

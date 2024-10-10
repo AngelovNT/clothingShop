@@ -6,6 +6,7 @@ require('dotenv').config();
 // Import routes
 const receiptRoutes = require('./routes/receiptRoutes');
 const stripeRoutes = require('./routes/stripeRoutes');
+const productRoutes = require('./routes/productRoutes'); // Import product routes
 
 const app = express();
 connectDB(); // Connect to MongoDB
@@ -17,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use('/receipts', receiptRoutes);
 app.use('/stripe', stripeRoutes);
+app.use('/products', productRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend is running!');
