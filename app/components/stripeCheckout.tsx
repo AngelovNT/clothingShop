@@ -6,11 +6,11 @@ const stripePromise = loadStripe(`${process.env.PUBLISHABLE_KEY}`); // Replace w
 
 interface CheckoutFormProps {
   amount: number;
-  receiptId: string;
+  orderId: string;
   setPaymentStatus: (status: string) => void;
 }
 
-const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, receiptId, setPaymentStatus }) => {
+const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, orderId, setPaymentStatus }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -35,7 +35,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, receiptId, setPayme
       const response = await fetch('http://localhost:5000/stripe/create-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, currency: 'usd', receiptId }),
+        body: JSON.stringify({ amount, currency: 'usd', orderId }),
       });
 
       if (!response.ok) {
@@ -56,15 +56,15 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, receiptId, setPayme
       } else if (result.paymentIntent?.status === 'succeeded') {
         setPaymentStatus('Paid');
 
-        // Update the receipt status in the backend
-        const updateResponse = await fetch('http://localhost:5000/receipts/update-receipt-status', {
-          method: 'POST',
+        // Update the order payment status in the backend
+        const updateResponse = await fetch('http://localhost:5000/orders/' + orderId + '/status', {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ receiptId, status: 'paid' }),
+          body: JSON.stringify({ paymentStatus: 'paid' }),
         });
 
         if (!updateResponse.ok) {
-          setError('Failed to update receipt status');
+          setError('Failed to update order payment status');
         }
       } else {
         setPaymentStatus('Awaiting Confirmation');
@@ -91,12 +91,12 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ amount, receiptId, setPayme
   );
 };
 
-const StripeCheckout: React.FC<{ amount: number; receiptId: string }> = ({ amount, receiptId }) => {
+const StripeCheckout: React.FC<{ amount: number; orderId: string }> = ({ amount, orderId }) => {
   const [paymentStatus, setPaymentStatus] = useState('unpaid');
 
   return (
     <Elements stripe={stripePromise}>
-      <CheckoutForm amount={amount} receiptId={receiptId} setPaymentStatus={setPaymentStatus} />
+      <CheckoutForm amount={amount} orderId={orderId} setPaymentStatus={setPaymentStatus} />
       {paymentStatus === 'Awaiting Confirmation' && <p>Awaiting confirmation from payment provider...</p>}
       {paymentStatus === 'Paid' && <p>Payment confirmed!</p>}
     </Elements>

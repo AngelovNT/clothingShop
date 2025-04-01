@@ -1,9 +1,9 @@
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-const Receipt = require('../models/receipt'); // Ensure you have your Receipt model imported
+const Order = require('../models/order'); // Using Order model instead of Receipt
 
 const createStripePayment = async (req, res) => {
-    const { amount, currency, receiptId } = req.body;
+    const { amount, currency, orderId } = req.body;
 
     try {
         // Create payment intent
@@ -14,8 +14,8 @@ const createStripePayment = async (req, res) => {
         });
 
         // Save initial payment status to the database
-        await Receipt.findByIdAndUpdate(receiptId, {
-            status: 'awaiting confirmation',
+        await Order.findByIdAndUpdate(orderId, {
+            paymentStatus: 'pending',
             paymentIntentId: paymentIntent.id,
         });
 
@@ -27,15 +27,14 @@ const createStripePayment = async (req, res) => {
 };
 
 const confirmStripePayment = async (req, res) => {
-    const { paymentIntentId, receiptId } = req.body;
+    const { paymentIntentId, orderId } = req.body;
 
     try {
         const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId);
         const isPaid = paymentIntent.status === 'succeeded';
 
-        await Receipt.findByIdAndUpdate(receiptId, {
-            isPaid,
-            status: isPaid ? 'paid' : 'awaiting confirmation',
+        await Order.findByIdAndUpdate(orderId, {
+            paymentStatus: isPaid ? 'paid' : 'pending',
         });
 
         res.json({ success: true });
